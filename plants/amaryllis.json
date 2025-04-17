@@ -1,0 +1,30 @@
+[
+  {
+    "field": "image",
+    "image": "https://www.aspca.org/sites/default/files/styles/medium_image_300x200/public/field/image/plants/amaryllis-300x200.jpg?itok=DGvJ5GOY"
+  },
+  {
+    "field": "additional-common-names",
+    "value": " Many, including: Belladonna lily, Saint Joseph lily, Cape Belladonna, Naked Lady"
+  },
+  {
+    "field": "scientific-name",
+    "value": " Amaryllis spp."
+  },
+  {
+    "field": "family",
+    "value": " Amaryllidaceae"
+  },
+  {
+    "field": "toxicity",
+    "value": " Toxic to Dogs, Toxic to Cats, Toxic to Horses"
+  },
+  {
+    "field": "toxic-principles",
+    "value": " Lycorine and others"
+  },
+  {
+    "field": "clinical-signs",
+    "value": " Vomiting (not horses), depression, diarrhea, abdominal pain, hypersalivation, anorexia, tremors."
+  }
+]
