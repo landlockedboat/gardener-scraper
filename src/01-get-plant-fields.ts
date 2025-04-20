@@ -1,5 +1,8 @@
 import * as puppeteer from "puppeteer";
 import fs from "node:fs";
+import path from "path";
+import chalk from "chalk";
+import { oraPromise } from "ora";
 
 const BASE_URL = "https://www.aspca.org";
 
@@ -8,11 +11,11 @@ const BASE_URL = "https://www.aspca.org";
     browser: puppeteer.Browser,
     pageUrl: string
   ) => {
-    const plantPage = await browser.newPage();
+    const page = await browser.newPage();
 
-    await plantPage.goto(pageUrl);
+    await page.goto(pageUrl);
 
-    const plantData = await plantPage.evaluate(async () => {
+    const plantData = await page.evaluate(async () => {
       const getPlantFieldObject = (plantHtmlElement: Element) => {
         //   1 <div class="panel-pane pane-entity-field pane-node-field-toxicity">
         //   2   <div class="field field-name-field-toxicity field-type-list-text field-label-hidden">
@@ -28,12 +31,15 @@ const BASE_URL = "https://www.aspca.org";
           .find((a) => a.includes("pane-node-field"))
           ?.replace("pane-node-field-", "");
 
-        const fieldValues = plantHtmlElement.querySelector(".values");
+        const fieldValues = Array.from(
+          plantHtmlElement.querySelectorAll(".values"),
+          (e) => e.textContent
+        ).join(" ");
 
         if (fieldValues) {
           return {
             field: fieldName,
-            value: fieldValues?.textContent,
+            value: fieldValues.trim(),
           };
         }
 
@@ -42,7 +48,7 @@ const BASE_URL = "https://www.aspca.org";
         if (imageHtmlElement) {
           return {
             field: fieldName || "thumb",
-            image: imageHtmlElement?.getAttribute("src"),
+            value: imageHtmlElement?.getAttribute("src"),
           };
         }
 
@@ -51,10 +57,14 @@ const BASE_URL = "https://www.aspca.org";
       };
       const plantFields = Array.from(
         document.querySelectorAll(".pane-entity-field"),
-
         (a) => getPlantFieldObject(a)
-      );
-      return [...plantFields.filter((a) => a)];
+      ).filter((a) => a);
+
+      const plantName = document.querySelector("h1")?.textContent;
+
+      plantFields.push({ field: "name", value: plantName || "" });
+
+      return plantFields;
     });
 
     try {
@@ -70,35 +80,41 @@ const BASE_URL = "https://www.aspca.org";
     } catch (err) {
       console.error(err);
     }
-    await plantPage.close();
+    await page.close();
+    return true;
   };
 
   const browser = await puppeteer.launch();
 
-  const page = await browser.newPage();
-  await page.goto(`${BASE_URL}/pet-care/animal-poison-control/cats-plant-list`);
-
-  const plantUrls = await page.evaluate(async () => {
-    const result = Array.from(
-      document.querySelectorAll(".field-content a[href]"),
-      (a) => a.getAttribute("href")
-    ).filter((a) => a !== null);
-
-    const samplePlants = result.slice(0, 5); // Random plants
-    return samplePlants;
-  });
-
-  console.log(plantUrls);
+  const rawData = fs.readFileSync("plant-urls.json", "utf8");
+  const plantUrls: string[] = JSON.parse(rawData);
 
   if (!plantUrls) {
     return;
   }
 
+  console.log(`Processing ${plantUrls.length} urls...`);
+
+  let colorIndex = 0;
+  const colors = ["red", "green",  "yellow", "blue", "magenta", "cyan"];
+
   for (let i = 0; i < plantUrls.length; i++) {
     const url = plantUrls[i];
-    await processPlantPage(browser, BASE_URL + url);
+    const plantId = path.basename(url);
+
+    const color = colors[colorIndex];
+    // @ts-ignore — we're using dynamic property access, which is safe here
+    const colorText = chalk[color](plantId);
+
+    await oraPromise(
+      processPlantPage(browser, BASE_URL + url),
+      `Processing ${colorText}`
+    );
+
+    // Wait a bit to unlock the thread
+    await new Promise((f) => setTimeout(f, 100));
+    colorIndex = (colorIndex + 1) % colors.length;
   }
 
-  await page.close();
   await browser.close();
 })();

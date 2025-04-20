@@ -1,1 +1,7 @@
 node_modules/
+index.json
+types.d.ts
+schema.json
+plants/
+plant-data/
+plant-urls.json
