@@ -1,5 +1,6 @@
 node_modules/
 index.json
+index.min.json
 types.d.ts
 schema.json
 plants/

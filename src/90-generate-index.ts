@@ -14,19 +14,19 @@ export interface PlantInput {
   thumb?: string;
 }
 
-type PlantOutput = {
-  name: string;
-  toxicity: {
-    status: string;
-    cats: boolean;
-    dogs: boolean;
-    horses: boolean;
+interface PlantOutput extends PlantInput {
+  id:string,
+  extraData: {
+    toxicityDescription: string;
+    toxicToCats: boolean;
+    toxicToDogs: boolean;
+    toxicToHorses: boolean;
+    searchableText: string;
   };
-  searchableText: string;
-};
+}
 
 const inputFolder = "./plant-data";
-const outputFile = "index.json";
+const outputFileName = "index";
 
 const files = fs
   .readdirSync(inputFolder)
@@ -46,56 +46,57 @@ files.forEach((file) => {
     return;
   }
 
-  const searchableText = (
-    plant.name +
-    plant.additionalCommonNames +
-    plant.scientificName +
-    plant.family
-  )
-    .trim()
-    .toLowerCase()
-    .replace(/,/g, "")
-    // Delete extra whitespace
-    .replace(/\s+/g, " ");
+  const searchableText =
+    `${plant.name} ${plant.additionalCommonNames} ${plant.scientificName} ${plant.family}`
+      .trim()
+      .toLowerCase()
+      .replace(/,/g, " ")
+      // Delete extra whitespace
+      .replace(/\s+/g, " ");
 
   // Toxicity logic
-  let toxicity = "Safe";
+  let toxicityDescription = "Safe";
 
   const plantToxicity = plant.toxicity?.toLowerCase();
   const toxicToCats =
-    plantToxicity?.includes("toxic to cats") &&
-    !plantToxicity?.includes("non-toxic to cats");
+    (plantToxicity?.includes("toxic to cats") &&
+      !plantToxicity?.includes("non-toxic to cats")) ||
+    false;
   const toxicToDogs =
-    plantToxicity?.includes("toxic to dogs") &&
-    !plantToxicity?.includes("non-toxic to dogs");
+    (plantToxicity?.includes("toxic to dogs") &&
+      !plantToxicity?.includes("non-toxic to dogs")) ||
+    false;
   const toxicToHorses =
-    plantToxicity?.includes("toxic to horses") &&
-    !plantToxicity?.includes("non-toxic to horses");
+    (plantToxicity?.includes("toxic to horses") &&
+      !plantToxicity?.includes("non-toxic to horses")) ||
+    false;
 
   if (toxicToCats || toxicToDogs || toxicToHorses) {
-    toxicity = "Toxic";
+    toxicityDescription = "Toxic";
   }
 
   const principles = plant.toxicPrinciples?.toLowerCase() || "";
   const clinicalSigns = plant.clinicalSigns?.toLowerCase() || "";
 
   if (principles.includes("highly toxic") || clinicalSigns.includes("death")) {
-    toxicity = "Highly toxic";
+    toxicityDescription = "Highly toxic";
   }
 
   result.push({
-    name: plant.name,
-    toxicity: {
-      status: toxicity,
-      cats: toxicToCats || false,
-      dogs: toxicToDogs || false,
-      horses: toxicToHorses || false,
+    ...plant,
+    id: path.parse(file).name,
+    extraData: {
+      searchableText,
+      toxicityDescription,
+      toxicToCats,
+      toxicToDogs,
+      toxicToHorses,
     },
-    searchableText,
   });
 });
 
 // Write to output JSON
-fs.writeFileSync(outputFile, JSON.stringify(result, null, 2), "utf8");
+fs.writeFileSync(outputFileName + ".json", JSON.stringify(result, null, 2), "utf8");
+fs.writeFileSync(outputFileName + ".min.json", JSON.stringify(result), "utf8");
 
-console.log(`✅ ${result.length} plants written to ${outputFile}`);
+console.log(`✅ ${result.length} plants written to ${outputFileName + ".json"}, ${outputFileName + ".min.json"}`);
